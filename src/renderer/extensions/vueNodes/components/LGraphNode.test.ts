@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/vue'
+import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen } from '@testing-library/vue'
 import { getActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -22,8 +23,11 @@ import type { NodeState } from '@/types/nodeState'
 import LGraphNode from '@/renderer/extensions/vueNodes/components/LGraphNode.vue'
 import { useVueElementTracking } from '@/renderer/extensions/vueNodes/composables/useVueNodeResizeTracking'
 import { useCanvasStore } from '@/renderer/core/canvas/canvasStore'
+import { useNodeResize } from '@/renderer/extensions/vueNodes/interactions/resize/useNodeResize'
 import { useSettingStore } from '@/platform/settings/settingStore'
+import { showNodeOptions } from '@/composables/graph/useMoreOptionsMenu'
 import { app } from '@/scripts/app'
+import { useAgentNodeSelectionStore } from '@/stores/agentNodeSelectionStore'
 import { useNodeOutputStore } from '@/stores/nodeOutputStore'
 import { getNodeByLocatorId } from '@/utils/graphTraversalUtil'
 
@@ -57,9 +61,16 @@ vi.mock<unknown>(
   import('@/renderer/extensions/vueNodes/composables/useNodeEventHandlers'),
   () => {
     const handleNodeSelect = vi.fn()
-    return { useNodeEventHandlers: () => ({ handleNodeSelect }) }
+    const handleNodeRightClick = vi.fn()
+    return {
+      useNodeEventHandlers: () => ({ handleNodeSelect, handleNodeRightClick })
+    }
   }
 )
+
+vi.mock<unknown>(import('@/composables/graph/useMoreOptionsMenu'), () => ({
+  showNodeOptions: vi.fn()
+}))
 
 vi.mock(
   import('@/renderer/extensions/vueNodes/composables/useVueNodeResizeTracking'),
@@ -123,12 +134,15 @@ vi.mock<unknown>(
 
 vi.mock(
   import('@/renderer/extensions/vueNodes/interactions/resize/useNodeResize'),
-  () => ({
-    useNodeResize: vi.fn(() => ({
-      startResize: vi.fn(),
-      isResizing: computed(() => false)
-    }))
-  })
+  () => {
+    const startResize = vi.fn()
+    return {
+      useNodeResize: vi.fn(() => ({
+        startResize,
+        isResizing: computed(() => false)
+      }))
+    }
+  }
 )
 
 const i18n = createI18n({
@@ -549,6 +563,29 @@ describe('LGraphNode', () => {
     expect(
       screen.queryByRole('button', { name: /show advanced/i })
     ).not.toBeInTheDocument()
+  })
+
+  describe('while picking nodes for the agent', () => {
+    it.for([
+      { picking: false, contextMenuCalls: 1, resizeCalls: 1 },
+      { picking: true, contextMenuCalls: 0, resizeCalls: 0 }
+    ])(
+      'picking=$picking opens the options menu $contextMenuCalls times and starts $resizeCalls resizes',
+      async ({ picking, contextMenuCalls, resizeCalls }) => {
+        useAgentNodeSelectionStore().isActive = picking
+        const { startResize } = useNodeResize(vi.fn())
+        const { container } = renderLGraphNode({ nodeData: mockNodeData })
+
+        await fireEvent.contextMenu(getNodeRoot(container))
+        await userEvent.pointer({
+          keys: '[MouseLeft>]',
+          target: screen.getAllByRole('button')[0]
+        })
+
+        expect(showNodeOptions).toHaveBeenCalledTimes(contextMenuCalls)
+        expect(startResize).toHaveBeenCalledTimes(resizeCalls)
+      }
+    )
   })
 
   describe('Reroute node sizing', () => {

@@ -967,6 +967,7 @@ export type DocOpsResultFrame = {
 
 export type DocResetData = {
   actor?: string
+  lineage_seq: number
   seq: number
   v: number
   workflow_id: string
@@ -982,6 +983,11 @@ export type DocResetFrame = {
 
 export type DocUpdateData = {
   actor?: string
+  lineage_seq: number
+  /**
+   * Semantic op IDs whose effects are encoded in this live update. Absent on state-vector catch-up updates, which can fold arbitrary history and have no bounded one-frame op set.
+   */
+  op_ids?: Array<string>
   seq: number
   /**
    * Standard-base64 encoded Yjs update. Host-to-follower only.
@@ -3630,7 +3636,7 @@ export type CreateTopupCheckoutResponse = {
 export type CreateTopupCheckoutRequest = {
   /**
    * Amount to charge in cents, before any promotion code the customer
-   * enters. Whole dollars only, from $5.00 to $4,739.00. The ceiling is
+   * enters. Whole dollars only, from $5.00 to $16,000.00. The ceiling is
    * a fixed business limit (not a Stripe technical constraint) on how
    * much a single unauthenticated-approval session may sell. The
    * credits granted are derived server-side from this amount and

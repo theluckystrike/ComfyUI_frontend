@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event'
 import { render, screen } from '@testing-library/vue'
 import { fromPartial } from '@total-typescript/shoehorn'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick, ref, watchEffect } from 'vue'
+import { nextTick, watchEffect } from 'vue'
 import { createI18n } from 'vue-i18n'
 
 import BaseWorkflowsSidebarTab from '@/components/sidebar/tabs/BaseWorkflowsSidebarTab.vue'
@@ -16,7 +16,6 @@ import type { ComfyWorkflow } from '@/platform/workflow/management/stores/workfl
 import type { TreeExplorerNode } from '@/types/treeExplorerTypes'
 import { flattenTree } from '@/utils/treeUtil'
 vi.mock(import('firebase/auth'))
-vi.mock(import('vuefire'), () => ({ useFirebaseAuth: vi.fn() }))
 
 beforeEach(() => {
   useSettingStore().settingValues['Comfy.Workflow.WorkflowTabsPosition'] =
@@ -171,19 +170,11 @@ vi.mock<unknown>(
   })
 )
 
-vi.mock<unknown>(import('@/components/ui/button/Button.vue'), () => ({
-  default: { name: 'Button', template: '<button><slot /></button>' }
-}))
-
 vi.mock<unknown>(import('@/composables/useTreeExpansion'), () => ({
   useTreeExpansion: () => ({
     expandNode: mockExpandNode,
     toggleNodeOnEvent: mockToggleNodeOnEvent
   })
-}))
-
-vi.mock<unknown>(import('@/composables/useAppMode'), () => ({
-  useAppMode: () => ({ isAppMode: ref(false) })
 }))
 
 vi.mock<unknown>(
@@ -280,10 +271,9 @@ describe('BaseWorkflowsSidebarTab', () => {
     expect(getLeafPaths(getSearchRoot())).toEqual(['workflows/test-alpha.json'])
   })
 
-  it('propagates failed workflow operations to the tree', async () => {
+  it('propagates failed workflow deletion to the tree', async () => {
     const workflow = createMockWorkflow('workflows/test.json')
     Object.assign(useWorkflowStore(), { workflows: [workflow] })
-    mockWorkflowService.renameWorkflow.mockResolvedValueOnce(false)
     mockWorkflowService.deleteWorkflow.mockResolvedValueOnce(false)
 
     renderComponent()
@@ -292,7 +282,6 @@ describe('BaseWorkflowsSidebarTab', () => {
     const leaf = getSearchRoot()?.children?.[0]
 
     expect(leaf).toBeDefined()
-    expect(await leaf?.handleRename?.('renamed')).toBe(false)
     expect(await leaf?.handleDelete?.()).toBe(false)
   })
 

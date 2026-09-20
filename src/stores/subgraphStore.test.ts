@@ -14,6 +14,7 @@ import type { ComfyNodeDef as ComfyNodeDefV1 } from '@/schemas/nodeDefSchema'
 import type { GlobalSubgraphData } from '@/scripts/api'
 import { api } from '@/scripts/api'
 import { app as comfyApp } from '@/scripts/app'
+import { useDialogService } from '@/services/dialogService'
 import { useLitegraphService } from '@/services/litegraphService'
 import { useNodeDefStore } from '@/stores/nodeDefStore'
 import { useSubgraphStore } from '@/stores/subgraphStore'
@@ -42,12 +43,7 @@ vi.mock<unknown>(import('@/scripts/api'), () => ({
     addEventListener: vi.fn()
   }
 }))
-vi.mock<unknown>(import('@/services/dialogService'), () => ({
-  useDialogService: vi.fn(() => ({
-    prompt: () => 'testname',
-    confirm: () => true
-  }))
-}))
+vi.mock(import('@/services/dialogService'))
 
 // Mock comfyApp globally for the store setup
 vi.mock<unknown>(import('@/scripts/app'), () => ({
@@ -91,6 +87,8 @@ describe('useSubgraphStore', () => {
   }
 
   beforeEach(() => {
+    vi.mocked(useDialogService().prompt).mockResolvedValue('testname')
+    vi.mocked(useDialogService().confirm).mockResolvedValue(true)
     mockDistributionTypes.isCloud = false
     mockDistributionTypes.isDesktop = false
     vi.mocked(useCanvasStore().getCanvas).mockImplementation(
@@ -143,7 +141,7 @@ describe('useSubgraphStore', () => {
   })
   it('should allow subgraphs to be edited', async () => {
     await mockFetch({ 'test.json': mockGraph })
-    expect(await store.editBlueprint(BLUEPRINT_TYPE_PREFIX + 'test')).toBe(true)
+    await store.editBlueprint(BLUEPRINT_TYPE_PREFIX + 'test')
     //check active graph
     expect(comfyApp.loadGraphData).toHaveBeenCalled()
   })
@@ -160,12 +158,8 @@ describe('useSubgraphStore', () => {
   it('should reject stale edit and delete requests without mutating', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    expect(await store.editBlueprint(BLUEPRINT_TYPE_PREFIX + 'missing')).toBe(
-      false
-    )
-    expect(await store.deleteBlueprint(BLUEPRINT_TYPE_PREFIX + 'missing')).toBe(
-      false
-    )
+    await store.editBlueprint(BLUEPRINT_TYPE_PREFIX + 'missing')
+    await store.deleteBlueprint(BLUEPRINT_TYPE_PREFIX + 'missing')
     expect(comfyApp.loadGraphData).not.toHaveBeenCalled()
     expect(api.storeUserData).not.toHaveBeenCalled()
     expect(error).toHaveBeenCalledWith(

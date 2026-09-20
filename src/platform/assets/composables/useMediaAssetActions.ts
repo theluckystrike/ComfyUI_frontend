@@ -3,7 +3,6 @@ import { useToast } from 'primevue/usetoast'
 import { inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import { downloadFile } from '@/base/common/downloadUtil'
 import { useCopyToClipboard } from '@/composables/useCopyToClipboard'
 import { useFeatureFlags } from '@/composables/useFeatureFlags'
 import { isCloud } from '@/platform/distribution/types'
@@ -39,6 +38,8 @@ import { useAssetExportStore } from '@/stores/assetExportStore'
 import type { AssetId, AssetItem } from '../schemas/assetSchema'
 import { MediaAssetKey } from '../schemas/mediaAssetSchema'
 import { assetService } from '../services/assetService'
+import { useAssetDownload } from './useAssetDownload'
+import type { AssetDownload } from './useAssetDownload'
 
 const EXCLUDED_TAGS = new Set(['models', 'input', 'output'])
 
@@ -95,6 +96,7 @@ export function useMediaAssetActions() {
   const workflowActions = useWorkflowActionsService()
   const litegraphService = useLitegraphService()
   const nodeDefStore = useNodeDefStore()
+  const { downloadFiles } = useAssetDownload()
 
   /**
    * Download one or more assets.
@@ -124,27 +126,15 @@ export function useMediaAssetActions() {
       return
     }
 
-    try {
-      targetAssets.forEach((asset) => downloadSingleAsset(asset))
-      toast.add({
-        severity: 'success',
-        summary: t('g.success'),
-        detail: t('mediaAsset.selection.downloadsStarted', targetAssets.length),
-        life: 2000
-      })
-    } catch (error) {
-      console.error('Failed to download assets:', error)
-      toast.add({
-        severity: 'error',
-        summary: t('g.error'),
-        detail: t('g.failedToDownloadImage')
-      })
-    }
+    void downloadFiles(targetAssets.map(createAssetDownload))
   }
 
-  function downloadSingleAsset(asset: AssetItem) {
-    const filename = getAssetDisplayName(asset)
-    downloadFile(getAssetFileUrl(asset), filename)
+  function createAssetDownload(asset: AssetItem): AssetDownload {
+    return {
+      mode: isCloud ? 'fetch' : 'direct',
+      url: getAssetFileUrl(asset),
+      filename: getAssetDisplayName(asset)
+    }
   }
 
   async function expandAssetForDownload(
@@ -171,34 +161,15 @@ export function useMediaAssetActions() {
   }
 
   async function downloadAssetsIndividually(assets: AssetItem[]) {
-    try {
-      const expanded = await Promise.all(assets.map(expandAssetForDownload))
-      const seenAssetIds = new Set<string>()
-      const filesToDownload = expanded.flat().filter((asset) => {
-        if (seenAssetIds.has(asset.id)) return false
-        seenAssetIds.add(asset.id)
-        return true
-      })
+    const expanded = await Promise.all(assets.map(expandAssetForDownload))
+    const seenAssetIds = new Set<string>()
+    const filesToDownload = expanded.flat().filter((asset) => {
+      if (seenAssetIds.has(asset.id)) return false
+      seenAssetIds.add(asset.id)
+      return true
+    })
 
-      filesToDownload.forEach((asset) => downloadSingleAsset(asset))
-
-      toast.add({
-        severity: 'success',
-        summary: t('g.success'),
-        detail: t(
-          'mediaAsset.selection.downloadsStarted',
-          filesToDownload.length
-        ),
-        life: 2000
-      })
-    } catch (error) {
-      console.error('Failed to download assets:', error)
-      toast.add({
-        severity: 'error',
-        summary: t('g.error'),
-        detail: t('g.failedToDownloadImage')
-      })
-    }
+    await downloadFiles(filesToDownload.map(createAssetDownload))
   }
 
   async function downloadAssetsAsZip(assets: AssetItem[]) {
@@ -612,7 +583,7 @@ export function useMediaAssetActions() {
   /**
    * Show confirmation dialog and delete asset(s) if confirmed
    * @param assets Single asset or array of assets to delete
-   * @returns true if user confirmed and deletion was attempted, false if cancelled
+   * @returns true if at least one item was deleted, false otherwise
    */
   async function deleteAssets(input: AssetItem[] | AssetItem) {
     const assets = Array.isArray(input) ? input : [input]
@@ -837,7 +808,7 @@ export function useMediaAssetActions() {
       severity,
       summary: t(`mediaAsset.assetDelete.${severity}`)
     })
-    return true
+    return deletedJobCount > 0 || deletedAssetCount > 0
   }
 
   return {

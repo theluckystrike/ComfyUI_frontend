@@ -4,7 +4,7 @@ import { computed } from 'vue'
 
 import { useErrorHandling } from '@/composables/useErrorHandling'
 import { useSettingStore } from '@/platform/settings/settingStore'
-import type { BookmarkCustomization } from '@/schemas/apiSchema'
+import type { BookmarkCustomization } from '@/platform/settings/types'
 import type { TreeNode } from '@/types/treeExplorerTypes'
 
 import {
@@ -92,12 +92,12 @@ export const useNodeBookmarkStore = defineStore('nodeBookmark', () => {
   ) => {
     if (!folderNode.isDummyFolder) {
       toastErrorHandler(new Error('Cannot rename non-folder node'))
-      return false
+      return
     }
 
     if (newName.includes('/')) {
       toastErrorHandler(new Error('Folder name cannot contain "/"'))
-      return false
+      return
     }
 
     const newNodePath =
@@ -105,14 +105,14 @@ export const useNodeBookmarkStore = defineStore('nodeBookmark', () => {
       '/'
 
     if (newNodePath === folderNode.nodePath) {
-      return true
+      return
     }
 
     if (bookmarks.value.some((b: string) => b.startsWith(newNodePath))) {
       toastErrorHandler(
         new Error(`Folder name "${newNodePath}" already exists`)
       )
-      return false
+      return
     }
 
     await settingStore.set(
@@ -124,7 +124,6 @@ export const useNodeBookmarkStore = defineStore('nodeBookmark', () => {
       )
     )
     await renameBookmarkCustomization(folderNode.nodePath, newNodePath)
-    return true
   }
 
   const deleteBookmarkFolder = async (folderNode: ComfyNodeDefImpl) => {

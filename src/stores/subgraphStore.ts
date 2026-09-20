@@ -15,7 +15,7 @@ import type {
 } from '@/platform/workflow/validation/schemas/workflowSchema'
 import type { SerializedNodeId } from '@/types/nodeId'
 import { useCanvasStore } from '@/renderer/core/canvas/canvasStore'
-import type { NodeError } from '@/schemas/apiSchema'
+import type { NodeError } from '@/platform/remote/comfyui/types'
 import type {
   ComfyNodeDef as ComfyNodeDefV1,
   InputSpec
@@ -399,18 +399,17 @@ export const useSubgraphStore = defineStore('subgraph', () => {
       life: 4000
     })
   }
-  async function editBlueprint(nodeType: string): Promise<boolean> {
+  async function editBlueprint(nodeType: string) {
     const name = nodeType.slice(BLUEPRINT_TYPE_PREFIX.length)
     if (!(name in subgraphCache)) {
       console.error(`Cannot edit missing subgraph blueprint: ${nodeType}`)
-      return false
+      return
     }
     const blueprint = subgraphCache[name]
     if (!(await useWorkflowService().openWorkflow(blueprint))) return false
     const canvas = useCanvasStore().getCanvas()
     if (canvas.graph && 'subgraph' in canvas.graph.nodes[0])
       canvas.setGraph(canvas.graph.nodes[0].subgraph)
-    return true
   }
   function getBlueprint(nodeType: string): ComfyWorkflowJSON | undefined {
     const name = nodeType.slice(BLUEPRINT_TYPE_PREFIX.length)
@@ -421,11 +420,11 @@ export const useSubgraphStore = defineStore('subgraph', () => {
     const blueprint = subgraphCache[name]
     return structuredClone(blueprint.changeTracker.initialState)
   }
-  async function deleteBlueprint(nodeType: string): Promise<boolean> {
+  async function deleteBlueprint(nodeType: string) {
     const name = nodeType.slice(BLUEPRINT_TYPE_PREFIX.length)
     if (!(name in subgraphCache)) {
       console.error(`Cannot delete missing subgraph blueprint: ${nodeType}`)
-      return false
+      return
     }
     const blueprint = subgraphCache[name]
 
@@ -435,7 +434,7 @@ export const useSubgraphStore = defineStore('subgraph', () => {
         summary: t('subgraphStore.cannotDeleteGlobal'),
         life: 4000
       })
-      return false
+      return
     }
 
     if (
@@ -446,12 +445,11 @@ export const useSubgraphStore = defineStore('subgraph', () => {
         itemList: [name]
       }))
     )
-      return false
+      return
 
     if (!(await blueprint.delete())) return false
     delete subgraphCache[name]
     subgraphDefCache.value.delete(name)
-    return true
   }
   function isSubgraphBlueprint(
     workflow: unknown

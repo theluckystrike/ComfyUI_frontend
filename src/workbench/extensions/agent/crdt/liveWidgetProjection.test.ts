@@ -10,6 +10,7 @@ import type { RemoteMutationContext } from '@/types/graphMutationContext'
 import { toNodeId } from '@/types/nodeId'
 import { widgetId } from '@/types/widgetId'
 
+import { inertPlacementPort } from './__fixtures__/inertPlacementPort'
 import { createGraphMutations } from './graphMutations'
 import type { GraphOperation } from './graphOperations'
 import {
@@ -76,6 +77,7 @@ describe('applyLiveWidgetValue', () => {
     const mutations = createGraphMutations({
       getScope: () => rootScope,
       layout: { createNode: vi.fn(), deleteNodes: vi.fn() },
+      placement: inertPlacementPort,
       liveWidgets: {
         rebind: (scope, nodeId, name) =>
           rebindLiveWidgetState(graph, scope, nodeId, name),
@@ -179,7 +181,7 @@ describe('applyLiveWidgetValue', () => {
       )
     ).toEqual({ status: 'applied', resolvedValue: 'after' })
     expect(widget.value).toBe('after')
-    expect(callback).toHaveBeenCalledWith('after')
+    expect(callback).toHaveBeenCalledWith('after', undefined, node)
     expect(node.onWidgetChanged).toHaveBeenCalledWith(
       'value',
       'after',
@@ -311,7 +313,7 @@ describe('applyLiveWidgetValue', () => {
   })
 
   it('updates serializable scalar widget types outside the legacy allowlist', () => {
-    const { graph, widget, callback } = graphWithWidget('color')
+    const { graph, node, widget, callback } = graphWithWidget('color')
 
     expect(
       applyLiveWidgetValue(
@@ -324,7 +326,7 @@ describe('applyLiveWidgetValue', () => {
       )
     ).toEqual({ status: 'applied', resolvedValue: '#ffffff' })
     expect(widget.value).toBe('#ffffff')
-    expect(callback).toHaveBeenCalledWith('#ffffff')
+    expect(callback).toHaveBeenCalledWith('#ffffff', undefined, node)
   })
 
   it('skips object values for a text widget', () => {
@@ -565,6 +567,7 @@ describe('applyLiveWidgetValue', () => {
     const markDirty = vi.fn()
     const projection = createLiveWidgetProjection({
       getRootGraph: () => graph,
+      getCanvas: () => undefined,
       markDirty
     })
 

@@ -7,7 +7,6 @@ import { useNodeOutputStore } from '@/stores/nodeOutputStore'
 import { fromPartial } from '@total-typescript/shoehorn'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createGraphMutations } from '@/core/graph/graphMutations'
 import { LGraph, LGraphNode, LiteGraph } from '@/lib/litegraph/src/litegraph'
 import type { IComboWidget } from '@/lib/litegraph/src/types/widgets'
 // eslint-disable-next-line import-x/no-restricted-paths
@@ -30,6 +29,7 @@ import type { RemoteMutationContext } from '@/types/graphMutationContext'
 import { toNodeId } from '@/types/nodeId'
 
 import { reconcileAgentAdapters } from './agentNodeMaterializer'
+import { createGraphMutations } from './graphMutations'
 import { applyLiveWidgetValue } from './liveWidgetProjection'
 
 const mocks = vi.hoisted(() => ({ showPreview: vi.fn() }))

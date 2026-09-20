@@ -3,8 +3,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { readReport, renderCloneGroups, renderComplexity, renderDeadCode, renderReport } from './fallow-findings';
-import type { FallowReport } from './fallow-findings';
+import {
+  readReport,
+  renderCloneGroups,
+  renderComplexity,
+  renderDeadCode,
+  renderReport
+} from './fallow-findings'
+import type { FallowReport } from './fallow-findings'
 
 /**
  * The shape below is the real one: it is the abridged output of
